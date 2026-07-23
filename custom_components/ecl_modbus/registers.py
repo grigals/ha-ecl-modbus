@@ -262,6 +262,21 @@ REG_CIRCUIT1_SUPPLY: Final[list[RegisterDef]] = [
         max_value=150,
         step=1.0,
     ),
+    # DK: Hældning på varmekurven for kreds 1
+    RegisterDef(
+        key="circuit1_weather_compensation_slope",
+        name="Circuit 1 weather compensation slope",
+        address=21456,
+        reg_type=RegisterType.FLOAT,
+        unit=None,
+        device_class=None,
+        state_class=None,
+        writable=True,
+        min_value=0.0,
+        max_value=4.0,
+        step=0.1,
+        icon="mdi:chart-line",
+    ),
     # DK: Fremløbstemperatur ved -30°C for kreds 1
     RegisterDef(
         key="circuit1_supply_temp_at_minus30",
