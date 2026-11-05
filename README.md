@@ -2,6 +2,8 @@
 
 A custom Home Assistant integration for reading data from **Danfoss ECL 120 and ECL 220 heating controllers** using **Modbus RTU or Modbus TCP**.
 
+> This is an independent community project. It is **not affiliated with, or endorsed by, Danfoss**. Danfoss is named only to identify the supported controllers.
+
 This integration is created by an enthusiast (not a professional developer) and is actively evolving.
 It is tested on **ECL 120**, but **ECL 220 uses the same register map**, so it *should* work identically — feedback is welcome!
 
