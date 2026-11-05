@@ -1,19 +1,17 @@
+"""Sensor platform for ECL Modbus: read-only registers."""
+
 from __future__ import annotations
 
-import logging
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
-from .registers import RegisterDef, RegisterType
-
-_LOGGER = logging.getLogger(__name__)
+from . import EclConfigEntry
+from .entity import EclModbusEntity
+from .registers import ALL_REGISTERS, RegisterDef, RegisterType
 
 
 def _decimals_from_step(step: float | None) -> int | None:
@@ -28,50 +26,20 @@ def _decimals_from_step(step: float | None) -> int | None:
     return abs(exp) if exp < 0 else 0
 
 
-class EclModbusRegisterSensor(CoordinatorEntity, SensorEntity):
+class EclModbusRegisterSensor(EclModbusEntity, SensorEntity):
     """Generic sensor exposing one read-only register."""
 
     def __init__(self, coordinator, entry_id: str, entry_title: str, reg: RegisterDef) -> None:
-        super().__init__(coordinator)
-        self._reg = reg
-
-        self._entry_id = entry_id
-        self._entry_title = entry_title
-
-        self._attr_name = f"{entry_title} {reg.name}"
-        self._attr_unique_id = f"{entry_id}_{reg.key}"
+        super().__init__(coordinator, entry_id, entry_title, reg)
 
         self._attr_native_unit_of_measurement = reg.unit
         self._attr_device_class = reg.device_class
-        self._attr_state_class = reg.state_class
-        self._attr_icon = reg.icon
-
-        self._attr_extra_state_attributes = {
-            "ecl_modbus_register": reg.address,
-            "ecl_modbus_type": reg.reg_type.value,
-            "ecl_modbus_writable": getattr(reg, "writable", False),
-        }
-
         # If we show mapped text, don't let HA treat it as a measurement/statistics sensor
-        if getattr(reg, "value_map", None):
-            self._attr_state_class = None
-
-    @property
-    def device_info(self) -> dict:
-        return {
-            "identifiers": {(DOMAIN, self._entry_id)},
-            "name": self._entry_title,
-            "manufacturer": "Danfoss",
-            "model": "ECL 120/220",
-        }
+        self._attr_state_class = None if reg.value_map else reg.state_class
 
     @property
     def native_value(self) -> Any:
-        data = self.coordinator.data
-        if data is None:
-            return None
-
-        raw = data.get(self._reg.key)
+        raw = self._raw_value
         if raw is None:
             return None
 
@@ -80,7 +48,7 @@ class EclModbusRegisterSensor(CoordinatorEntity, SensorEntity):
             return raw
 
         # Enum/token mapping (show text instead of number)
-        value_map = getattr(self._reg, "value_map", None)
+        value_map = self._reg.value_map
         if value_map:
             try:
                 code = int(float(raw))
@@ -88,7 +56,7 @@ class EclModbusRegisterSensor(CoordinatorEntity, SensorEntity):
                 return None
             return value_map.get(code, str(code))
 
-        scale = float(getattr(self._reg, "scale", 1.0) or 1.0)
+        scale = float(self._reg.scale or 1.0)
 
         # Integer-ish types: keep integers as integers (avoid 1234.0)
         if self._reg.reg_type in (RegisterType.INT16, RegisterType.UINT32):
@@ -105,7 +73,7 @@ class EclModbusRegisterSensor(CoordinatorEntity, SensorEntity):
 
             # If scaling is used for an int-type, return scaled value with sensible rounding
             value = n * scale
-            decimals = _decimals_from_step(getattr(self._reg, "step", None))
+            decimals = _decimals_from_step(self._reg.step)
             if decimals is not None:
                 return round(value, decimals)
             return round(value, 6)
@@ -123,7 +91,7 @@ class EclModbusRegisterSensor(CoordinatorEntity, SensorEntity):
             return round(value, 1)
 
         # Avoid ugly float representation (e.g. 30.100000381...)
-        decimals = _decimals_from_step(getattr(self._reg, "step", None))
+        decimals = _decimals_from_step(self._reg.step)
         if decimals is not None:
             return round(value, decimals)
 
@@ -132,16 +100,12 @@ class EclModbusRegisterSensor(CoordinatorEntity, SensorEntity):
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: EclConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    store = hass.data[DOMAIN][entry.entry_id]
-    coordinator = store["coordinator"]
-    entry_title: str = store["entry_title"]
-    regs: list[RegisterDef] = store["registers"]
-
-    ro_regs = [r for r in regs if not getattr(r, "writable", False)]
+    data = entry.runtime_data
     async_add_entities(
-        [EclModbusRegisterSensor(coordinator, entry.entry_id, entry_title, r) for r in ro_regs],
-        update_before_add=False,
+        EclModbusRegisterSensor(data.coordinator, entry.entry_id, data.title, reg)
+        for reg in ALL_REGISTERS
+        if reg.platform == "sensor"
     )

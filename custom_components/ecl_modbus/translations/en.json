@@ -1,0 +1,62 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "ECL Modbus",
+        "description": "Choose a name and how the controller is connected.",
+        "data": {
+          "name": "Name",
+          "transport": "Connection type"
+        }
+      },
+      "serial": {
+        "title": "Serial (Modbus RTU)",
+        "data": {
+          "port": "Serial port",
+          "baudrate": "Baud rate",
+          "slave_id": "Modbus slave ID"
+        }
+      },
+      "tcp": {
+        "title": "TCP (Modbus TCP gateway)",
+        "data": {
+          "host": "Gateway host or IP address",
+          "tcp_port": "TCP port",
+          "slave_id": "Modbus slave ID"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This controller is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "ECL Modbus options",
+        "description": "Tick a group to enable all of its registers, or untick it to disable them all. A group is only ticked when all of its registers are enabled, and groups you don't change are left as they are. New entities appear after about 30 seconds. To choose single registers, use the entity list on the device page.",
+        "data": {
+          "register_groups": "Register groups",
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "register_groups": {
+      "options": {
+        "temperatures": "Temperatures",
+        "status": "Status and alarms",
+        "boost": "Boost",
+        "setpoints": "Setpoints",
+        "weather_curve": "Weather curve",
+        "pid": "PID tuning",
+        "limiters": "Return and room limiters",
+        "exercise": "Pump and valve exercise",
+        "features": "Feature switches",
+        "sensor_health": "Sensor health",
+        "device": "Device information"
+      }
+    }
+  }
+}
