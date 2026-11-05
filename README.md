@@ -73,9 +73,35 @@ During setup you choose **how the controller is connected**:
 
 ---
 
-### Options
-- Enable/disable individual registers
-- Configure global polling interval
+### Choosing registers
+Every register is a normal Home Assistant entity, and only a useful core set starts enabled. Registers you don't enable are not polled.
+
+- **Single registers:** open the device page, or **Settings → Devices & Services → Entities**, and enable or disable entities there. The Entities page can change many at once.
+- **Whole groups:** open the integration's **Configure** dialog and tick or untick a group. A group is only ticked when all of its registers are enabled, and groups you don't change are left as they are.
+
+| Group | Contents |
+|-------|----------|
+| Temperatures | S1–S6, outside, flow, return, room, supply, DHW |
+| Status and alarms | Valve, pump, operation mode and status, heat demand, bypass, alarms |
+| Boost | Boost on/off, remaining time, period, added temperature |
+| Setpoints | Flow limits and references, room, summer cut-out, frost protection, bypass |
+| Weather curve | Curve slope and curve points |
+| PID tuning | Xp, Tn, deadband |
+| Return and room limiters | Limiter influence and adaption time |
+| Pump and valve exercise | After-run and exercise timing |
+| Feature switches | Limiters, summer cut-out, frost protection, exercise, bypass, external override |
+| Sensor health | S1–S6 OK, invalid, open circuit or short circuit |
+| Device information | Serial, firmware, IP and MAC address, runtime, Modbus message counters |
+
+Entities appear about 30 seconds after you enable them, when Home Assistant reloads the integration.
+
+The new registers follow the **ECL 120 application A130** map. Other applications use some of these addresses differently.
+
+### Upgrading from 2.3.0 or older
+Your existing entities keep their entity IDs, names and history, and your register selection is carried over automatically. A few new registers start enabled: heat flow temperature, return temperature and the two alarms. Take a Home Assistant backup before upgrading, as with any update.
+
+### Polling interval
+The polling interval is set in the same **Configure** dialog.
 
 No YAML required.
 
@@ -85,7 +111,7 @@ No YAML required.
 - Uses `pymodbus` for Modbus communication
 - Supports both **Modbus RTU** and **Modbus TCP**
 - One shared coordinator polls enabled registers
-- Automatic reconnect on communication errors
+- Automatic reconnect on communication errors; entities show as unavailable until the connection is back
 - Groups all sensors under a single device in Home Assistant
 
 ---
@@ -119,6 +145,12 @@ Used for direct Modbus RTU communication via USB (e.g. `/dev/ttyUSB0` or `/dev/s
 Used as a **Modbus TCP ⇄ Modbus RTU gateway**.  
 Configured in *Modbus TCP ↔ Modbus RTU* mode and connected to the ECL controller via RS485.
 
+- **Hi-Flying Protoss-PE11 RS485 to Ethernet Serial Server**  
+  Vendor: Hi-Flying  
+  Link: http://www.hi-flying.com/pe11
+
+Tested and confirmed working as a **Modbus TCP ⇄ Modbus RTU gateway** connected to the ECL controller via RS485.
+
 > When using a gateway, ensure that the RS485 parameters (baudrate, parity, stop bits) match the ECL controller configuration.
 
 ---
@@ -130,6 +162,17 @@ This integration is actively evolving. Planned and possible future improvements 
 - More advanced connection diagnostics
 
 Suggestions, missing registers, and pull requests are very welcome!
+
+### Running the tests
+The tests run on real Home Assistant with a fake Modbus client. They need Linux or WSL, and the Python version required by `pytest-homeassistant-custom-component`.
+
+```bash
+pip install -r requirements_test.txt
+```
+
+```bash
+pytest
+```
 
 ---
 
