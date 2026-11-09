@@ -10,6 +10,7 @@ Keeping this separate avoids platform import order issues (sensor/number).
 from __future__ import annotations
 
 import logging
+import math
 import struct
 import threading
 from datetime import timedelta
@@ -178,7 +179,9 @@ class EclModbusHub:
         if regs is None:
             return None
         raw = (regs[0] << 16) | regs[1]
-        return struct.unpack(">f", raw.to_bytes(4, byteorder="big"))[0]
+        value = struct.unpack(">f", raw.to_bytes(4, byteorder="big"))[0]
+        # NaN/inf (e.g. a missing sensor) can't be a Home Assistant numeric state.
+        return value if math.isfinite(value) else None
 
     def read_int16(self, reg_address_manual: int, signed: bool = True) -> int | None:
         regs = self._read_registers(reg_address_manual, count=1)
