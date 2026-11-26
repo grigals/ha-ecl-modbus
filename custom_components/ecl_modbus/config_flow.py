@@ -17,15 +17,31 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_NAME, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    EntitySelector,
+    EntitySelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
+    TextSelector,
 )
 
 from .const import (
     CONF_BAUDRATE,
+    CONF_CONFIGURE_RETURN_CURVE,
     CONF_HOST,
     CONF_REGISTER_GROUPS,
+    CONF_RETURN_CURVE_AVERAGE_HOURS,
+    CONF_RETURN_CURVE_MAX,
+    CONF_RETURN_CURVE_MIN,
+    CONF_RETURN_CURVE_OUTDOOR_ENTITY,
+    CONF_RETURN_CURVE_POINTS,
+    DEFAULT_RETURN_CURVE_AVERAGE_HOURS,
+    DEFAULT_RETURN_CURVE_MAX,
+    DEFAULT_RETURN_CURVE_MIN,
+    DEFAULT_RETURN_CURVE_POINTS,
     CONF_SCAN_INTERVAL,
     CONF_SLAVE_ID,
     CONF_TCP_PORT,
@@ -42,6 +58,15 @@ from .const import (
 )
 from .entity_state import async_enabled_groups, async_set_group_enabled
 from .registers import REGISTER_GROUPS
+from .return_curve import format_points, parse_points
+
+
+def _temperature_selector() -> NumberSelector:
+    return NumberSelector(
+        NumberSelectorConfig(
+            min=5, max=150, step=0.5, unit_of_measurement="°C", mode=NumberSelectorMode.BOX
+        )
+    )
 
 
 class EclModbusConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -127,7 +152,10 @@ class EclModbusConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class EclModbusOptionsFlow(OptionsFlow):
-    """Options: enable or disable whole register groups, and the polling interval."""
+    """Options: register groups, polling interval, and the return limit curve."""
+
+    def __init__(self) -> None:
+        self._options: dict = {}
 
     async def async_step_init(self, user_input: dict | None = None) -> ConfigFlowResult:
         """Show the options form."""
@@ -145,6 +173,9 @@ class EclModbusOptionsFlow(OptionsFlow):
                 async_set_group_enabled(self.hass, entry, group, False)
 
             options[CONF_SCAN_INTERVAL] = user_input[CONF_SCAN_INTERVAL]
+            if user_input.get(CONF_CONFIGURE_RETURN_CURVE):
+                self._options = options
+                return await self.async_step_return_curve()
             return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
@@ -165,6 +196,81 @@ class EclModbusOptionsFlow(OptionsFlow):
                         CONF_SCAN_INTERVAL,
                         default=options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
                     ): vol.All(int, vol.Clamp(min=5, max=3600)),
+                    vol.Optional(CONF_CONFIGURE_RETURN_CURVE, default=False): bool,
+                }
+            ),
+        )
+
+    async def async_step_return_curve(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        """Curve points, outdoor source, averaging and limits of the return limit curve."""
+        options = self._options
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                points = parse_points(user_input[CONF_RETURN_CURVE_POINTS])
+            except ValueError:
+                errors[CONF_RETURN_CURVE_POINTS] = "invalid_points"
+            if user_input[CONF_RETURN_CURVE_MIN] >= user_input[CONF_RETURN_CURVE_MAX]:
+                errors[CONF_RETURN_CURVE_MAX] = "min_not_below_max"
+
+            if not errors:
+                options[CONF_RETURN_CURVE_POINTS] = format_points(points)
+                for key in (
+                    CONF_RETURN_CURVE_AVERAGE_HOURS,
+                    CONF_RETURN_CURVE_MIN,
+                    CONF_RETURN_CURVE_MAX,
+                ):
+                    options[key] = float(user_input[key])
+                # No entity chosen: use the ECL's own outdoor sensor.
+                options.pop(CONF_RETURN_CURVE_OUTDOOR_ENTITY, None)
+                if user_input.get(CONF_RETURN_CURVE_OUTDOOR_ENTITY):
+                    options[CONF_RETURN_CURVE_OUTDOOR_ENTITY] = user_input[
+                        CONF_RETURN_CURVE_OUTDOOR_ENTITY
+                    ]
+                return self.async_create_entry(title="", data=options)
+
+        current = {**options, **(user_input or {})}
+        return self.async_show_form(
+            step_id="return_curve",
+            errors=errors,
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_RETURN_CURVE_POINTS,
+                        default=current.get(
+                            CONF_RETURN_CURVE_POINTS, DEFAULT_RETURN_CURVE_POINTS
+                        ),
+                    ): TextSelector(),
+                    vol.Optional(
+                        CONF_RETURN_CURVE_OUTDOOR_ENTITY,
+                        description={
+                            "suggested_value": current.get(CONF_RETURN_CURVE_OUTDOOR_ENTITY)
+                        },
+                    ): EntitySelector(
+                        EntitySelectorConfig(domain="sensor", device_class="temperature")
+                    ),
+                    vol.Required(
+                        CONF_RETURN_CURVE_AVERAGE_HOURS,
+                        default=current.get(
+                            CONF_RETURN_CURVE_AVERAGE_HOURS, DEFAULT_RETURN_CURVE_AVERAGE_HOURS
+                        ),
+                    ): NumberSelector(
+                        NumberSelectorConfig(
+                            min=0, max=168, step=0.5, unit_of_measurement="h",
+                            mode=NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Required(
+                        CONF_RETURN_CURVE_MIN,
+                        default=current.get(CONF_RETURN_CURVE_MIN, DEFAULT_RETURN_CURVE_MIN),
+                    ): _temperature_selector(),
+                    vol.Required(
+                        CONF_RETURN_CURVE_MAX,
+                        default=current.get(CONF_RETURN_CURVE_MAX, DEFAULT_RETURN_CURVE_MAX),
+                    ): _temperature_selector(),
                 }
             ),
         )

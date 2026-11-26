@@ -5,12 +5,13 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.const import EntityCategory, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import EclConfigEntry
-from .entity import EclModbusEntity
+from .entity import EclModbusEntity, EclReturnCurveEntity
 from .registers import ALL_REGISTERS, RegisterDef, RegisterType
 
 
@@ -98,6 +99,28 @@ class EclModbusRegisterSensor(EclModbusEntity, SensorEntity):
         return round(value, 6)
 
 
+class EclReturnCurveSensor(EclReturnCurveEntity, SensorEntity):
+    """The return limit the curve works out from the averaged outdoor temperature."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_icon = "mdi:thermometer-water"
+
+    def __init__(self, curve, entry_id: str, entry_title: str) -> None:
+        super().__init__(
+            curve, entry_id, entry_title, "return_limit_calculated", "Return limit (calculated)"
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        return self._curve.target
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return self._curve.attributes
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: EclConfigEntry,
@@ -109,3 +132,4 @@ async def async_setup_entry(
         for reg in ALL_REGISTERS
         if reg.platform == "sensor"
     )
+    async_add_entities([EclReturnCurveSensor(data.return_curve, entry.entry_id, data.title)])

@@ -5,13 +5,19 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.restore_state import (
+    ExtraStoredData,
+    RestoredExtraData,
+    RestoreEntity,
+)
 from pymodbus.exceptions import ModbusException
 
 from . import EclConfigEntry
-from .entity import EclModbusEntity
+from .entity import EclModbusEntity, EclReturnCurveEntity
 from .registers import ALL_REGISTERS, RegisterDef
 
 
@@ -47,6 +53,44 @@ class EclModbusRegisterSwitch(EclModbusEntity, SwitchEntity):
         await self._async_write(0)
 
 
+class EclReturnCurveSwitch(EclReturnCurveEntity, SwitchEntity, RestoreEntity):
+    """Turns the return limit curve on or off. Off by default.
+
+    Turning it on again resumes the curve after an outside change paused it.
+    Also keeps the curve's state, including the outdoor average, across restarts.
+    """
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:chart-line"
+
+    def __init__(self, curve, entry_id: str, entry_title: str) -> None:
+        super().__init__(curve, entry_id, entry_title, "return_limit_curve", "Return limit curve")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        extra = await self.async_get_last_extra_data()
+        if extra is not None:
+            self._curve.async_restore(extra.as_dict())
+
+    @property
+    def is_on(self) -> bool:
+        return self._curve.enabled
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"paused": self._curve.paused, "status": self._curve.status}
+
+    @property
+    def extra_restore_state_data(self) -> ExtraStoredData:
+        return RestoredExtraData(self._curve.as_restore_data())
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._curve.async_set_enabled(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._curve.async_set_enabled(False)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: EclConfigEntry,
@@ -58,3 +102,4 @@ async def async_setup_entry(
         for reg in ALL_REGISTERS
         if reg.platform == "switch"
     )
+    async_add_entities([EclReturnCurveSwitch(data.return_curve, entry.entry_id, data.title)])
