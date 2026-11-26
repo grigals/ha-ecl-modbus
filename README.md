@@ -118,7 +118,7 @@ It is **off by default**. To set it up:
 
 | Setting | Default | Meaning |
 |---------|---------|---------|
-| Curve points | `-15:55, 10:40` | 2 to 6 `outdoor °C:return limit °C` pairs, e.g. `-20:60, -14:59, -10:54, -4:47, 0:42, 4:37`. Between points the limit is interpolated linearly. Beyond the first and last point it stays flat. |
+| Curve points | `-15:55, 10:40` | 2 to 12 `outdoor °C:return limit °C` pairs, e.g. `-20:60, -14:59, -10:54, -4:47, 0:42, 4:37`. Between points the limit is interpolated linearly. Beyond the first and last point it stays flat. |
 | Outdoor temperature sensor | *(empty)* | Empty uses the ECL's own outdoor sensor (register 21102). You can also choose any Home Assistant temperature sensor. |
 | Outdoor averaging period | 24 h | The curve uses the mean outdoor temperature over this period. 0 uses the current value. |
 | Lowest / highest return limit | 25 / 65 °C | The written value is clamped to this range. |

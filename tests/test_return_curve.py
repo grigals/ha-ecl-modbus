@@ -53,8 +53,8 @@ def test_parse_sorts_and_accepts_separators() -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["", "-20:60", ",".join(f"{x}:40" for x in range(7)), "0:40, 0:45", "0:40, cold:60"],
-    ids=["empty", "one", "seven", "duplicate", "garbage"],
+    ["", "-20:60", ",".join(f"{x}:40" for x in range(13)), "0:40, 0:45", "0:40, cold:60"],
+    ids=["empty", "one", "thirteen", "duplicate", "garbage"],
 )
 def test_parse_rejects(text: str) -> None:
     with pytest.raises(ValueError):
@@ -79,6 +79,21 @@ def test_parse_rejects(text: str) -> None:
 )
 def test_interpolation(outdoor: float, expected: float) -> None:
     assert interpolate(POINTS, outdoor) == pytest.approx(expected)
+
+
+# A 16-row table (outdoor -> return limit, every 2 K) that is flat at both ends.
+TABLE = {
+    10: 42, 8: 42, 6: 42, 4: 42, 2: 45, 0: 47, -2: 50, -4: 52,
+    -6: 55, -8: 57, -10: 59, -12: 61, -14: 64, -16: 65, -18: 65, -20: 65,
+}
+
+
+def test_long_table_fits_with_12_points() -> None:
+    """The flat ends come free, so the 11 rows from -16 to 4 reproduce the table."""
+    points = parse_points(", ".join(f"{x}:{TABLE[x]}" for x in range(-16, 5, 2)))
+    assert len(points) == 11
+    for outdoor, limit in TABLE.items():
+        assert interpolate(points, outdoor) == limit
 
 
 def test_active_segment() -> None:

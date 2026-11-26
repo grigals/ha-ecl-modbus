@@ -52,14 +52,14 @@
           "return_curve_max": "Highest return limit"
         },
         "data_description": {
-          "return_curve_points": "2 to 6 points, e.g. -20:60, -10:54, 0:42, 4:37. Between points the limit is interpolated, beyond the first and last point it stays flat.",
+          "return_curve_points": "2 to 12 points, e.g. -20:60, -10:54, 0:42, 4:37. Between points the limit is interpolated, beyond the first and last point it stays flat.",
           "return_curve_outdoor_entity": "Leave empty to use the controller's own outdoor sensor (register 21102).",
           "return_curve_average_hours": "0 uses the current outdoor temperature without averaging."
         }
       }
     },
     "error": {
-      "invalid_points": "Enter 2 to 6 points as outdoor:limit, separated by commas, each outdoor temperature only once.",
+      "invalid_points": "Enter 2 to 12 points as outdoor:limit, separated by commas, each outdoor temperature only once.",
       "min_not_below_max": "The lowest limit must be below the highest limit."
     }
   },

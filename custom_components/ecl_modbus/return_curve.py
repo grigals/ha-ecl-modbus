@@ -2,7 +2,7 @@
 
 The ECL 120 has one fixed return temperature limit (register 21210). The ECL 210/310
 can make the limit follow the outdoor temperature. This module emulates that: after
-each poll it works out a limit from a curve of 2 to 6 points and writes it to 21210.
+each poll it works out a limit from a curve of 2 to 12 points and writes it to 21210.
 
 Fail-safe: the controller keeps the last value written. If Home Assistant stops, the
 ECL simply goes on limiting at that value.
@@ -53,7 +53,7 @@ RETURN_LIMIT_REGISTER = _BY_KEY["heat_return_temperature_reference"]  # 21210
 OUTDOOR_REGISTER = _BY_KEY["outside_temperature"]  # 21102
 
 MIN_POINTS = 2
-MAX_POINTS = 6
+MAX_POINTS = 12
 WRITE_THRESHOLD = 1.0  # K: smaller changes are not written
 WRITE_INTERVAL = timedelta(minutes=30)  # at most one write per interval
 # 21210 is a float with step 0.1. A value read back within this is "the same".
@@ -83,7 +83,7 @@ def parse_points(text: str) -> list[Point]:
     """Parse "outdoor:limit" pairs separated by commas, e.g. "-20:60, 4:37".
 
     "->" and "=" are accepted instead of ":". Returns the points sorted by outdoor
-    temperature. Raises ValueError when the text is not 2 to 6 distinct points.
+    temperature. Raises ValueError when the text is not 2 to 12 distinct points.
     """
     points: list[Point] = []
     for part in re.split(r"[,;\n]+", text or ""):
