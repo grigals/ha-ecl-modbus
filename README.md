@@ -107,6 +107,35 @@ The polling interval is set in the same **Configure** dialog.
 
 No YAML required.
 
+### Return limit curve (optional)
+The ECL 120 has one fixed return temperature limit (register 21210, *Heat return temperature reference*). The ECL 210/310 can make that limit follow the outdoor temperature. This integration can do the same for the ECL 120: it works out the limit from a curve and writes it to 21210.
+
+It is **off by default**. To set it up:
+
+1. Open **Configure**, tick **Configure the return limit curve next** and submit.
+2. Enter the curve and the other settings (below).
+3. Turn on the **Return limit curve** switch on the device page.
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| Curve points | `-15:55, 10:40` | 2 to 6 `outdoor °C:return limit °C` pairs, e.g. `-20:60, -14:59, -10:54, -4:47, 0:42, 4:37`. Between points the limit is interpolated linearly. Beyond the first and last point it stays flat. |
+| Outdoor temperature sensor | *(empty)* | Empty uses the ECL's own outdoor sensor (register 21102). You can also choose any Home Assistant temperature sensor. |
+| Outdoor averaging period | 24 h | The curve uses the mean outdoor temperature over this period. 0 uses the current value. |
+| Lowest / highest return limit | 25 / 65 °C | The written value is clamped to this range. |
+
+How it writes:
+- After each poll it calculates a new limit. It writes the limit only when it differs from the controller's value by **1 K or more**, and **at most every 30 minutes**.
+- The next poll reads the value back. If the controller doesn't hold the written value, the integration logs a warning and raises a repair issue under **Settings → System → Repairs**.
+- If the outdoor temperature is unavailable, nothing is written.
+- If the limit is changed somewhere else (in ECL Go, on the controller, or with the *Heat return temperature reference* entity), the curve **pauses** and raises a repair issue instead of overwriting your change. To resume, turn the switch off and on again.
+- While the curve is on, 21210 and 21102 are polled even if their entities are disabled.
+
+The diagnostic sensor **Return limit (calculated)** shows the limit the curve works out. Its attributes show the averaged and current outdoor temperature, the active curve segment, the status (`active`, `paused`, `outdoor_unavailable`, …), and the time and result of the last write.
+
+> **Fail-safe:** the ECL stores the last value written in 21210 and keeps limiting at that value. If Home Assistant stops, the connection is lost or the curve is turned off, the controller goes on with the last limit. It does not fall back to a default. Before you uninstall the integration or turn the curve off for good, set the fixed limit you want.
+
+The outdoor average and the curve's state are kept across restarts.
+
 ---
 
 ## 🧩 How it works

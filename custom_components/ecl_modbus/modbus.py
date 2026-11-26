@@ -280,6 +280,11 @@ class EclModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=scan_interval_sec),
         )
         self.hub = hub
+        # Registers polled even while their entities are disabled (return limit curve).
+        self.extra_registers: dict[str, RegisterDef] = {}
+        # Number of polls started, and which of them produced the current data.
+        self.poll_count = 0
+        self.data_poll = 0
 
     def _read_register(self, reg: RegisterDef) -> Any:
         if reg.reg_type == RegisterType.FLOAT:
@@ -298,13 +303,19 @@ class EclModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Read from the entity registry on every poll, so disabling an entity
         # stops its polling straight away.
         registers = async_enabled_registers(self.hass, self.config_entry)
+        keys = {reg.key for reg in registers}
+        registers += [reg for key, reg in self.extra_registers.items() if key not in keys]
+        self.poll_count += 1
+        poll = self.poll_count
 
         def _read_all() -> dict[str, Any]:
             return {reg.key: self._read_register(reg) for reg in registers}
 
         try:
-            return await self.hass.async_add_executor_job(_read_all)
+            data = await self.hass.async_add_executor_job(_read_all)
         except EclCommunicationError as exc:
             # Stop at the first failure: otherwise every register waits for its own
             # timeout. Entities show as unavailable until the connection is back.
             raise UpdateFailed(f"ECL Modbus update failed: {exc}") from exc
+        self.data_poll = poll
+        return data

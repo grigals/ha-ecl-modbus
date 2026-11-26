@@ -37,9 +37,40 @@
         "description": "Tick a group to enable all of its registers, or untick it to disable them all. A group is only ticked when all of its registers are enabled, and groups you don't change are left as they are. New entities appear after about 30 seconds. To choose single registers, use the entity list on the device page.",
         "data": {
           "register_groups": "Register groups",
-          "scan_interval": "Polling interval (seconds)"
+          "scan_interval": "Polling interval (seconds)",
+          "configure_return_curve": "Configure the return limit curve next"
+        }
+      },
+      "return_curve": {
+        "title": "Return limit curve",
+        "description": "Makes the return temperature limit (register 21210) follow the outdoor temperature. Turn it on with the \"Return limit curve\" switch. It writes only changes of 1 K or more, at most every 30 minutes. If Home Assistant stops, the controller keeps the last value written.",
+        "data": {
+          "return_curve_points": "Curve points (outdoor °C:return limit °C)",
+          "return_curve_outdoor_entity": "Outdoor temperature sensor",
+          "return_curve_average_hours": "Outdoor averaging period (hours)",
+          "return_curve_min": "Lowest return limit",
+          "return_curve_max": "Highest return limit"
+        },
+        "data_description": {
+          "return_curve_points": "2 to 6 points, e.g. -20:60, -10:54, 0:42, 4:37. Between points the limit is interpolated, beyond the first and last point it stays flat.",
+          "return_curve_outdoor_entity": "Leave empty to use the controller's own outdoor sensor (register 21102).",
+          "return_curve_average_hours": "0 uses the current outdoor temperature without averaging."
         }
       }
+    },
+    "error": {
+      "invalid_points": "Enter 2 to 6 points as outdoor:limit, separated by commas, each outdoor temperature only once.",
+      "min_not_below_max": "The lowest limit must be below the highest limit."
+    }
+  },
+  "issues": {
+    "return_curve_paused": {
+      "title": "{name}: return limit curve paused",
+      "description": "The return temperature limit was changed outside Home Assistant, for example in ECL Go or on the controller: it is now {current}, the curve last set {expected}. The curve has stopped writing so it doesn't overwrite your change. To resume, turn the \"Return limit curve\" switch off and on again."
+    },
+    "return_curve_not_applied": {
+      "title": "{name}: return limit was not applied",
+      "description": "The return limit curve wrote {target}, but the controller reads back {read_back}. Check that the controller accepts writes to register 21210. The curve tries again after 30 minutes."
     }
   },
   "selector": {

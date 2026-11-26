@@ -32,6 +32,7 @@ class FakeModbusClient:
     - rejected_addresses: reads starting here return a Modbus error response
     - io_errors: the next N reads return a ModbusIOException (no response)
     - write_error / write_raises: make writes fail with an error result / exception
+    - write_ignored: writes succeed but the controller keeps its old value
     """
 
     instances: list["FakeModbusClient"] = []
@@ -41,6 +42,7 @@ class FakeModbusClient:
     io_errors = 0
     write_error = False
     write_raises = False
+    write_ignored = False
 
     def __init__(self, **kwargs) -> None:
         self.kwargs = kwargs
@@ -87,7 +89,8 @@ class FakeModbusClient:
         self.writes.append((address + 1, words))
         if FakeModbusClient.write_error:
             return SimpleNamespace(isError=lambda: True)
-        FakeModbusClient.set_words(address + 1, words)
+        if not FakeModbusClient.write_ignored:
+            FakeModbusClient.set_words(address + 1, words)
         return SimpleNamespace(isError=lambda: False)
 
     def write_register(self, address: int, value: int, device_id: int):
@@ -112,6 +115,7 @@ def fake_client() -> Generator[type[FakeModbusClient]]:
     FakeModbusClient.io_errors = 0
     FakeModbusClient.write_error = False
     FakeModbusClient.write_raises = False
+    FakeModbusClient.write_ignored = False
     with (
         patch("custom_components.ecl_modbus.modbus.ModbusTcpClient", FakeModbusClient),
         patch("custom_components.ecl_modbus.modbus.ModbusSerialClient", FakeModbusClient),

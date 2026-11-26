@@ -28,6 +28,7 @@ from .const import (
 )
 from .entity_state import async_migrate_legacy_options
 from .modbus import EclModbusCoordinator, EclModbusHub
+from .return_curve import ReturnCurveController, remove_issues
 
 
 @dataclass
@@ -37,6 +38,7 @@ class EclRuntimeData:
     hub: EclModbusHub
     coordinator: EclModbusCoordinator
     title: str
+    return_curve: ReturnCurveController
 
 
 type EclConfigEntry = ConfigEntry[EclRuntimeData]
@@ -102,9 +104,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: EclConfigEntry) -> bool:
         hub=hub,
         coordinator=coordinator,
         title=entry.data.get(CONF_NAME, DEFAULT_NAME),
+        return_curve=ReturnCurveController(hass, entry, coordinator, hub),
     )
 
+    # The switch restores the curve's state while the platforms are set up.
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.runtime_data.return_curve.async_start())
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     return True
 
@@ -115,6 +120,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: EclConfigEntry) -> bool
     if unload_ok:
         await hass.async_add_executor_job(entry.runtime_data.hub.close)
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Delete the return limit curve's repair issues with the entry."""
+    remove_issues(hass, entry.entry_id)
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: EclConfigEntry) -> None:

@@ -2,13 +2,29 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .modbus import EclModbusCoordinator
 from .registers import RegisterDef, group_category
+
+if TYPE_CHECKING:
+    from .return_curve import ReturnCurveController
+
+
+def device_info(entry_id: str, entry_title: str) -> DeviceInfo:
+    """Return the one device that all entities of a config entry belong to."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, entry_id)},
+        name=entry_title,
+        manufacturer="Danfoss",
+        model="ECL 120/220",
+    )
 
 
 class EclModbusEntity(CoordinatorEntity[EclModbusCoordinator]):
@@ -36,12 +52,7 @@ class EclModbusEntity(CoordinatorEntity[EclModbusCoordinator]):
         category = group_category(reg)
         self._attr_entity_category = EntityCategory(category) if category else None
 
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry_id)},
-            name=entry_title,
-            manufacturer="Danfoss",
-            model="ECL 120/220",
-        )
+        self._attr_device_info = device_info(entry_id, entry_title)
 
         self._attr_extra_state_attributes = {
             "ecl_modbus_register": reg.address,
@@ -54,3 +65,26 @@ class EclModbusEntity(CoordinatorEntity[EclModbusCoordinator]):
         """Return the last raw value read for this register, if any."""
         data = self.coordinator.data
         return data.get(self._reg.key) if data else None
+
+
+class EclReturnCurveEntity(Entity):
+    """An entity of the return limit curve, updated whenever the curve's state changes."""
+
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        curve: ReturnCurveController,
+        entry_id: str,
+        entry_title: str,
+        key: str,
+        name: str,
+    ) -> None:
+        self._curve = curve
+        self._attr_name = f"{entry_title} {name}"
+        self._attr_unique_id = f"{entry_id}_{key}"
+        self._attr_device_info = device_info(entry_id, entry_title)
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self._curve.async_add_listener(self.async_write_ha_state))
