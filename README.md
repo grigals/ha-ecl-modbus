@@ -109,6 +109,14 @@ The polling interval is set in the same **Configure** dialog.
 
 No YAML required.
 
+### Supply curve chart
+The image entity **Supply curve chart** draws the controller's heat curve: the supply temperature at its six points (−30, −15, −5, 0, 5 and 15 °C outdoor), continued beyond them and cut to the minimum and maximum supply temperature, as in the Danfoss tools. At the current outdoor temperature it marks:
+- what the curve asks for (orange dot, *Heat weather compensated reference*)
+- the reference after limiters such as the return limiter (red ring, *Heat flow temperature reference*)
+- the actual flow temperature (green ring)
+
+The chart reads the curve from the controller; change the curve in ECL Go or on the controller. Its registers are polled even if their own entities are disabled. The outdoor and flow markers use the *Outside temperature*, *Heat flow temperature reference* and *Heat flow temperature* entities, which are on by default; turn those off and the markers are left out. Disable the chart to stop polling its registers.
+
 ### Return limit curve (optional)
 The ECL 120 has one fixed return temperature limit (register 21210, *Heat return temperature reference*). The ECL 210/310 can make that limit follow the outdoor temperature. This integration can do the same for the ECL 120: it works out the limit from a curve and writes it to 21210.
 

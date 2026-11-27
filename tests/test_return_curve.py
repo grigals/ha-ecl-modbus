@@ -252,7 +252,8 @@ async def test_writes_and_verifies(hass: HomeAssistant, fake_client) -> None:
     await _setup(hass, entry, on=True)
 
     assert _curve_writes(fake_client) == [47.0]
-    assert _sensor(hass, entry).attributes["last_write_result"] == "waiting for read-back"
+    # The read-back may already have run.
+    assert _sensor(hass, entry).attributes["last_write_result"] in ("waiting for read-back", "ok")
 
     await _poll(hass, entry)
     attrs = _sensor(hass, entry).attributes
@@ -378,9 +379,9 @@ async def test_home_assistant_outdoor_sensor(hass: HomeAssistant, fake_client) -
     await _setup(hass, entry, on=True)
     assert _curve_writes(fake_client) == [42.0]
     # The ECL outdoor register isn't needed for the curve then.
-    assert entry.runtime_data.coordinator.extra_registers.keys() == {
-        "heat_return_temperature_reference"
-    }
+    assert [
+        reg.key for reg in entry.runtime_data.coordinator.extra_registers_of("return_curve")
+    ] == ["heat_return_temperature_reference"]
 
     hass.states.async_set("sensor.outdoor", "unavailable")
     await _poll(hass, entry)
@@ -517,7 +518,7 @@ def test_preview_table_marks_clamped_values() -> None:
     assert lines[2] == "| 8 °C | 40 °C * |"  # 4 K beyond the warm end, flat and clamped
     assert "| -10 °C | 54 °C |" in lines
     assert "| -24 °C | 55 °C * |" in lines
-    assert lines[-1] == "\* cut to the 40–55 °C range"
+    assert lines[-1] == r"\* cut to the 40–55 °C range"
     assert "*" not in preview_table(POINTS, 5, 150)
 
 

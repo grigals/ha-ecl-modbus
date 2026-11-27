@@ -310,12 +310,12 @@ class ReturnCurveController:
     @callback
     def _set_polled(self) -> None:
         """Poll 21210 and the ECL outdoor sensor while on, even if their entities are off."""
-        extra = self.coordinator.extra_registers
-        extra.clear()
+        extra = []
         if self.enabled:
-            extra[RETURN_LIMIT_REGISTER.key] = RETURN_LIMIT_REGISTER
+            extra.append(RETURN_LIMIT_REGISTER)
             if self.outdoor_entity is None:
-                extra[OUTDOOR_REGISTER.key] = OUTDOOR_REGISTER
+                extra.append(OUTDOOR_REGISTER)
+        self.coordinator.set_extra_registers("return_curve", extra)
 
     # --- State kept across restarts -------------------------------------------
 
@@ -368,7 +368,8 @@ class ReturnCurveController:
             self._set_polled()
         self._notify()
         if enabled and refresh:
-            await self.coordinator.async_request_refresh()
+            # A user action: poll now, not after the refresh cooldown.
+            await self.coordinator.async_refresh()
 
     # --- Evaluation ---------------------------------------------------------------
 
