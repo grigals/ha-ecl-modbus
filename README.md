@@ -87,6 +87,8 @@ Two image entities on the device page. Add them to a dashboard with a *Picture e
 - the reference after limiters (red)
 - the actual flow temperature (green)
 
+![Supply curve chart](docs/images/supply_curve_chart.png)
+
 Its registers are polled while the chart is enabled. Change the curve itself in ECL Go or on the controller.
 
 ## Tests
