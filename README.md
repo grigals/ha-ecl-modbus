@@ -132,6 +132,8 @@ How it writes:
 
 The image entity **Return limit curve chart** draws the curve, the min/max limits (dashed red), the target at the current averaged outdoor temperature (orange dot) and the value the ECL actually holds (green ring). Add it to a dashboard with a *Picture entity* card, or open it from the device page.
 
+![Return limit curve chart: an 11-point curve from 61 °C at −16 °C outdoor down to 38 °C at 4 °C, with the target and the value the ECL holds marked at −0.9 °C outdoor](docs/images/return_limit_curve_chart.png)
+
 The diagnostic sensor **Return limit (calculated)** shows the limit the curve works out. Its attributes show the averaged and current outdoor temperature, the active curve segment, the status (`active`, `paused`, `outdoor_unavailable`, …), and the time and result of the last write.
 
 > **Fail-safe:** the ECL stores the last value written in 21210 and keeps limiting at that value. If Home Assistant stops, the connection is lost or the curve is turned off, the controller goes on with the last limit. It does not fall back to a default. Before you uninstall the integration or turn the curve off for good, set the fixed limit you want.
