@@ -75,6 +75,8 @@ The ECL 120 has one fixed return limit, register `21210`. This feature makes it 
 
 The **Return limit curve** switch on the device page turns it on or off later.
 
+<img src="docs/images/return_limit_curve_options.png" alt="Return limit curve settings" width="420">
+
 | Setting | Default | Notes |
 |---------|---------|-------|
 | Curve points | `-15:55, 10:40` | `2` to `12` `outdoor:limit` pairs in °C. Linear between points, flat beyond the ends. |
