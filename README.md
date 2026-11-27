@@ -39,11 +39,19 @@ Each register definition includes:
 
 ### Install via HACS
 
-The easiest way to install this integration is through HACS.
+[HACS](https://hacs.xyz) (Home Assistant Community Store) is a community project, not part of Home Assistant and not run by it. If you don't have it yet, install it first by following the [HACS installation guide](https://hacs.xyz/docs/use/).
 
-Click the button below:
+This integration is not in the HACS default list, so add it as a custom repository:
 
-[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=nichlasrohde&repository=ha-ecl-modbus&category=integration)
+1. Open **HACS**, select the **⋮** menu in the top right and choose **Custom repositories**.
+2. Enter `https://github.com/grigals/ha-ecl-modbus`, choose the type **Integration** and select **Add**.
+3. Search HACS for **ECL Modbus**, open it and select **Download**.
+4. Restart Home Assistant.
+5. Add the integration under **Settings → Devices & services → Add integration → ECL Modbus**.
+
+With HACS installed, the button below fills in steps 1 and 2 for you:
+
+[![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=grigals&repository=ha-ecl-modbus&category=integration)
 
 ---
 
