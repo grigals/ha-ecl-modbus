@@ -31,6 +31,8 @@ Each register definition includes:
 - Automatic reconnect if connection is lost  
 - Friendly naming and unified device info in Home Assistant  
 
+![The ECL device page in Home Assistant: controls for boost and operation mode, sensors for alarms and weather curve points, and activity including the return limit curve switch](docs/images/device_page.png)
+
 ---
 
 ## 🚀 Installation
