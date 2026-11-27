@@ -40,7 +40,7 @@ Copy `custom_components/ecl_modbus` from the latest release into `/config/custom
 | Stop bits | `1` | `1` |
 | Slave / unit ID | `5` | `5` |
 
-Tested with a USB to RS485 converter, a WaveShare RS485 to Ethernet/WiFi server and a Hi-Flying Protoss-PE11.
+Tested with Hi-Flying Protoss-PE11. Dual device setup.
 
 ## Registers
 Every register is an entity. Only a core set starts enabled, and disabled registers are not polled.
