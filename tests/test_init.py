@@ -10,6 +10,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ecl_modbus.const import DOMAIN
 from custom_components.ecl_modbus.entity_state import LEGACY_REGISTER_KEYS
+from custom_components.ecl_modbus.image import SUPPLY_CHART_REGISTERS
 from custom_components.ecl_modbus.registers import ALL_REGISTERS, registers_in_group
 
 TCP_DATA = {
@@ -165,12 +166,13 @@ async def test_migration_of_never_saved_options(hass: HomeAssistant, fake_client
 
 
 async def test_new_entry_uses_defaults(hass: HomeAssistant, fake_client) -> None:
-    """A new install polls only the default registers, already on the first refresh."""
+    """A new install polls the default registers, plus what the supply curve chart needs."""
     entry = _new_entry(hass)
     await _setup(hass, entry)
 
-    expected = {reg.address for reg in ALL_REGISTERS if reg.enabled_default}
-    assert set(fake_client.instances[0].reads) == expected
+    default = {reg.address for reg in ALL_REGISTERS if reg.enabled_default}
+    chart = {reg.address for reg in SUPPLY_CHART_REGISTERS}
+    assert set(fake_client.instances[0].reads) == default | chart
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 

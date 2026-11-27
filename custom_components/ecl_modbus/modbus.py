@@ -281,10 +281,27 @@ class EclModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self.hub = hub
         # Registers polled even while their entities are disabled (return limit curve).
-        self.extra_registers: dict[str, RegisterDef] = {}
+        # Per owner (the return limit curve, the supply curve chart), so one owner
+        # can't drop another's registers.
+        self._extra_registers: dict[str, list[RegisterDef]] = {}
         # Number of polls started, and which of them produced the current data.
         self.poll_count = 0
         self.data_poll = 0
+
+    def set_extra_registers(self, owner: str, registers: list[RegisterDef]) -> None:
+        """Poll these registers too, even while their entities are disabled."""
+        if registers:
+            self._extra_registers[owner] = list(registers)
+        else:
+            self._extra_registers.pop(owner, None)
+
+    def extra_registers_of(self, owner: str) -> list[RegisterDef]:
+        return list(self._extra_registers.get(owner, []))
+
+    @property
+    def extra_registers(self) -> list[RegisterDef]:
+        """All registers polled on behalf of an owner."""
+        return [reg for regs in self._extra_registers.values() for reg in regs]
 
     def _read_register(self, reg: RegisterDef) -> Any:
         if reg.reg_type == RegisterType.FLOAT:
@@ -304,7 +321,10 @@ class EclModbusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # stops its polling straight away.
         registers = async_enabled_registers(self.hass, self.config_entry)
         keys = {reg.key for reg in registers}
-        registers += [reg for key, reg in self.extra_registers.items() if key not in keys]
+        for reg in self.extra_registers:
+            if reg.key not in keys:
+                keys.add(reg.key)
+                registers.append(reg)
         self.poll_count += 1
         poll = self.poll_count
 
