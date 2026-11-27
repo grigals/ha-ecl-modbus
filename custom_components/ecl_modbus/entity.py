@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.const import EntityCategory
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -87,4 +88,8 @@ class EclReturnCurveEntity(Entity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        self.async_on_remove(self._curve.async_add_listener(self.async_write_ha_state))
+        self.async_on_remove(self._curve.async_add_listener(self._handle_curve_update))
+
+    @callback
+    def _handle_curve_update(self) -> None:
+        self.async_write_ha_state()

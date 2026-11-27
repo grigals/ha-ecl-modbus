@@ -6,7 +6,10 @@ import math
 import struct
 from datetime import datetime, timedelta, timezone
 
+from xml.etree import ElementTree
+
 import pytest
+from homeassistant.components.image import async_get_image
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -15,6 +18,7 @@ from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ecl_modbus.const import DOMAIN
+from custom_components.ecl_modbus.curve_chart import preview_table, render_svg
 from custom_components.ecl_modbus.return_curve import (
     OutdoorAverage,
     active_segment,
@@ -440,6 +444,25 @@ async def test_options_flow(hass: HomeAssistant, fake_client) -> None:
         result["flow_id"],
         {**user_input, "return_curve_points": EXAMPLE, "return_curve_outdoor_entity": "sensor.out"},
     )
+    assert result["step_id"] == "return_curve_preview"
+    placeholders = result["description_placeholders"]
+    assert "| 4 °C | 37 °C |" in placeholders["table"]
+    assert placeholders["outdoor"] == "sensor.out"
+    assert placeholders["averaging"] == "24 h average"
+
+    # Back to edit keeps what was entered.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"enable_return_curve": True, "edit_return_curve": True}
+    )
+    assert result["step_id"] == "return_curve"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {**user_input, "return_curve_points": EXAMPLE, "return_curve_outdoor_entity": "sensor.out"},
+    )
+    assert entry.runtime_data.return_curve.enabled is False
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"enable_return_curve": True}
+    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert entry.options == {
@@ -450,5 +473,82 @@ async def test_options_flow(hass: HomeAssistant, fake_client) -> None:
         "return_curve_max": 65.0,
         "return_curve_outdoor_entity": "sensor.out",
     }
-    assert entry.runtime_data.return_curve.outdoor_entity == "sensor.out"
+    # The reload applies the new curve, and the tick turned it on.
+    curve = entry.runtime_data.return_curve
+    assert curve.outdoor_entity == "sensor.out"
+    assert curve.enabled
+    assert hass.states.get(_switch_id(hass, entry)).state == "on"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_preview_can_leave_curve_off(hass: HomeAssistant, fake_client) -> None:
+    entry = _entry(hass)
+    await _setup(hass, entry, on=True)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"register_groups": [], "scan_interval": 30, "configure_return_curve": True},
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            "return_curve_points": EXAMPLE,
+            "return_curve_average_hours": 0,
+            "return_curve_min": 30,
+            "return_curve_max": 65,
+        },
+    )
+    assert result["description_placeholders"]["averaging"] == "no averaging"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"enable_return_curve": False}
+    )
+    await hass.async_block_till_done()
+    assert not entry.runtime_data.return_curve.enabled
+    assert hass.states.get(_switch_id(hass, entry)).state == "off"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+# --- Chart and preview -------------------------------------------------------------
+
+
+def test_preview_table_marks_clamped_values() -> None:
+    table = preview_table(POINTS, 40, 55)
+    lines = table.splitlines()
+    assert lines[2] == "| 8 °C | 40 °C * |"  # 4 K beyond the warm end, flat and clamped
+    assert "| -10 °C | 54 °C |" in lines
+    assert "| -24 °C | 55 °C * |" in lines
+    assert lines[-1] == "\* cut to the 40–55 °C range"
+    assert "*" not in preview_table(POINTS, 5, 150)
+
+
+def test_svg_chart_is_valid() -> None:
+    svg = render_svg(POINTS, 40, 55, outdoor=-4.2, target=47.2, current=50.0, status="active")
+    root = ElementTree.fromstring(svg)
+    tags = [el.tag.split("}")[1] for el in root.iter()]
+    assert tags.count("polyline") == 1
+    assert tags.count("circle") == len(POINTS) + 2  # points, target, current
+    assert "ECL holds 50.0 °C" in svg
+    # Without an operating point it still draws the curve.
+    ElementTree.fromstring(render_svg(POINTS, 5, 150))
+
+
+async def test_chart_image_entity(hass: HomeAssistant, fake_client) -> None:
+    _set_ecl(fake_client, outdoor=-4.0, limit=60.0)
+    entry = _entry(hass)
+    await _setup(hass, entry, on=True)
+    await _poll(hass, entry)
+
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "image", DOMAIN, f"{entry.entry_id}_return_limit_curve_chart"
+    )
+    first = hass.states.get(entity_id).state
+    image = await async_get_image(hass, entity_id)
+    assert image.content_type == "image/svg+xml"
+    assert b"ECL holds 47.0" in image.content
+
+    # A new operating point gives a new picture.
+    _set_ecl(fake_client, outdoor=-10.0)
+    await _poll(hass, entry)
+    assert hass.states.get(entity_id).state != first
+    assert b"Target 54" in (await async_get_image(hass, entity_id)).content
     assert await hass.config_entries.async_unload(entry.entry_id)

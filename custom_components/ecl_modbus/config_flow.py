@@ -58,7 +58,11 @@ from .const import (
 )
 from .entity_state import async_enabled_groups, async_set_group_enabled
 from .registers import REGISTER_GROUPS
-from .return_curve import format_points, parse_points
+from .curve_chart import preview_table
+from .return_curve import OUTDOOR_REGISTER, format_points, parse_points
+
+CONF_ENABLE = "enable_return_curve"  # form-only
+CONF_EDIT = "edit_return_curve"  # form-only
 
 
 def _temperature_selector() -> NumberSelector:
@@ -230,7 +234,7 @@ class EclModbusOptionsFlow(OptionsFlow):
                     options[CONF_RETURN_CURVE_OUTDOOR_ENTITY] = user_input[
                         CONF_RETURN_CURVE_OUTDOOR_ENTITY
                     ]
-                return self.async_create_entry(title="", data=options)
+                return await self.async_step_return_curve_preview()
 
         current = {**options, **(user_input or {})}
         return self.async_show_form(
@@ -271,6 +275,41 @@ class EclModbusOptionsFlow(OptionsFlow):
                         CONF_RETURN_CURVE_MAX,
                         default=current.get(CONF_RETURN_CURVE_MAX, DEFAULT_RETURN_CURVE_MAX),
                     ): _temperature_selector(),
+                }
+            ),
+        )
+
+    async def async_step_return_curve_preview(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        """Show the curve as a table before saving, and offer to turn it on."""
+        options = self._options
+        curve = getattr(getattr(self.config_entry, "runtime_data", None), "return_curve", None)
+
+        if user_input is not None:
+            if user_input.get(CONF_EDIT):
+                return await self.async_step_return_curve()
+            if curve is not None and user_input[CONF_ENABLE] != curve.enabled:
+                # Applied by the reload that saving the options starts.
+                await curve.async_set_enabled(user_input[CONF_ENABLE], refresh=False)
+            return self.async_create_entry(title="", data=options)
+
+        points = parse_points(options[CONF_RETURN_CURVE_POINTS])
+        hours = options[CONF_RETURN_CURVE_AVERAGE_HOURS]
+        return self.async_show_form(
+            step_id="return_curve_preview",
+            description_placeholders={
+                "table": preview_table(
+                    points, options[CONF_RETURN_CURVE_MIN], options[CONF_RETURN_CURVE_MAX]
+                ),
+                "outdoor": options.get(CONF_RETURN_CURVE_OUTDOOR_ENTITY)
+                or f"ECL outdoor sensor (register {OUTDOOR_REGISTER.address})",
+                "averaging": f"{hours:g} h average" if hours else "no averaging",
+            },
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ENABLE, default=True): bool,
+                    vol.Optional(CONF_EDIT, default=False): bool,
                 }
             ),
         )

@@ -262,6 +262,7 @@ class ReturnCurveController:
         self.outdoor_now: float | None = None
         self.outdoor_average: float | None = None
         self.target: float | None = None
+        self.current_limit: float | None = None  # what 21210 held at the last poll
         self.segment: str | None = None
         self.last_write: datetime | None = None
         self.last_result: str | None = None
@@ -273,6 +274,7 @@ class ReturnCurveController:
         self._pending_after_poll = 0
 
         self._lock = asyncio.Lock()
+        self._hold_writes = False
         self._listeners: list[CALLBACK_TYPE] = []
 
     # --- Wiring --------------------------------------------------------------
@@ -346,9 +348,15 @@ class ReturnCurveController:
 
     # --- Switch -----------------------------------------------------------------
 
-    async def async_set_enabled(self, enabled: bool) -> None:
-        """Turn the curve on or off. Turning it on again also resumes after a pause."""
+    async def async_set_enabled(self, enabled: bool, *, refresh: bool = True) -> None:
+        """Turn the curve on or off. Turning it on again also resumes after a pause.
+
+        refresh=False is for the options flow: the entry reloads with the new curve
+        right after, so this instance must not write with the old one meanwhile.
+        """
         async with self._lock:
+            if not refresh:
+                self._hold_writes = True
             self.enabled = enabled
             self.paused = False
             # Start from whatever the controller holds now.
@@ -359,7 +367,7 @@ class ReturnCurveController:
             self._delete_issue(ISSUE_NOT_APPLIED)
             self._set_polled()
         self._notify()
-        if enabled:
+        if enabled and refresh:
             await self.coordinator.async_request_refresh()
 
     # --- Evaluation ---------------------------------------------------------------
@@ -387,6 +395,8 @@ class ReturnCurveController:
             self.target = None
             self.segment = None
 
+        self.current_limit = _finite(data.get(RETURN_LIMIT_REGISTER.key))
+
         if not self.enabled:
             self.status = STATUS_OFF
             return
@@ -397,7 +407,7 @@ class ReturnCurveController:
             self.status = STATUS_PAUSED
             return
 
-        current = _finite(data.get(RETURN_LIMIT_REGISTER.key))
+        current = self.current_limit
         if current is None:
             self.status = STATUS_LIMIT_UNAVAILABLE
             return
@@ -418,7 +428,7 @@ class ReturnCurveController:
             return
 
         self.status = STATUS_ACTIVE
-        if should_write(self.target, current, self.last_write, now):
+        if not self._hold_writes and should_write(self.target, current, self.last_write, now):
             await self._async_write(now, self.target, current)
 
     def _read_outdoor(self, data: dict[str, Any]) -> float | None:
