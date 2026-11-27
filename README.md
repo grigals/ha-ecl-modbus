@@ -102,8 +102,8 @@ pytest
 ## Documentation
 [ECL120 & ECL220 Modbus Specification, rev 023](./docs/IS2007%2C%20ECL120%20and%20ECL220%20Modbus%20Specification%2C%20rev%20023.pdf), shared with permission from Danfoss.
 
-## License and disclaimer
-MIT. Provided as-is, without warranty. Writing to the controller changes how the heating runs. Check registers and values before writing, and use at your own risk.
+## License
+[MIT](LICENSE). Use at your own risk; see the [disclaimer](DISCLAIMER.md).
 
 ## Credits
 Forked from [nichlasrohde/ha-ecl-modbus](https://github.com/nichlasrohde/ha-ecl-modbus), the original integration.
