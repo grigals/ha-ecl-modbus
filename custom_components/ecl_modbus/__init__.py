@@ -26,6 +26,7 @@ from .const import (
     PLATFORMS,
     TRANSPORT_TCP,
 )
+from .analytics import ReturnComplianceTracker
 from .entity_state import async_migrate_legacy_options
 from .modbus import EclModbusCoordinator, EclModbusHub
 from .return_curve import ReturnCurveController, remove_issues
@@ -39,6 +40,7 @@ class EclRuntimeData:
     coordinator: EclModbusCoordinator
     title: str
     return_curve: ReturnCurveController
+    return_compliance: ReturnComplianceTracker
 
 
 type EclConfigEntry = ConfigEntry[EclRuntimeData]
@@ -105,11 +107,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: EclConfigEntry) -> bool:
         coordinator=coordinator,
         title=entry.data.get(CONF_NAME, DEFAULT_NAME),
         return_curve=ReturnCurveController(hass, entry, coordinator, hub),
+        return_compliance=ReturnComplianceTracker(hass, entry, coordinator),
     )
+    await entry.runtime_data.return_compliance.async_load()
 
     # The switch restores the curve's state while the platforms are set up.
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.runtime_data.return_curve.async_start())
+    entry.async_on_unload(entry.runtime_data.return_compliance.async_start())
+    entry.async_on_unload(entry.runtime_data.return_compliance.async_save)
+
+    # The entities have now said which extra registers they need, and the return
+    # limit curve has restored its state: read everything once more, together.
+    if coordinator.extra_registers:
+        await coordinator.async_refresh()
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     return True
 

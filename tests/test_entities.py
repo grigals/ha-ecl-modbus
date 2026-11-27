@@ -401,8 +401,8 @@ async def test_device_and_entity_metadata(hass: HomeAssistant, fake_client) -> N
 
     entities = er.async_entries_for_config_entry(registry, entry.entry_id)
     # One per register, plus the return limit curve's switch, sensor and chart,
-    # and the supply curve chart.
-    assert len(entities) == len(ALL_REGISTERS) + 4
+    # the supply curve chart, and four derived sensors.
+    assert len(entities) == len(ALL_REGISTERS) + 8
     assert {e.device_id for e in entities} == {device.id}
 
     def category(key: str):

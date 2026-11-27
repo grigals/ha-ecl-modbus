@@ -166,13 +166,15 @@ async def test_migration_of_never_saved_options(hass: HomeAssistant, fake_client
 
 
 async def test_new_entry_uses_defaults(hass: HomeAssistant, fake_client) -> None:
-    """A new install polls the default registers, plus what the supply curve chart needs."""
+    """A new install polls the default registers, plus what charts and derived sensors need."""
     entry = _new_entry(hass)
     await _setup(hass, entry)
 
     default = {reg.address for reg in ALL_REGISTERS if reg.enabled_default}
-    chart = {reg.address for reg in SUPPLY_CHART_REGISTERS}
-    assert set(fake_client.instances[0].reads) == default | chart
+    # Charts and derived sensors poll what they need, even with its entities disabled.
+    extra = {reg.address for reg in entry.runtime_data.coordinator.extra_registers}
+    assert {reg.address for reg in SUPPLY_CHART_REGISTERS} <= extra
+    assert set(fake_client.instances[0].reads) == default | extra
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
