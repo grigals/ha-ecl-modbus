@@ -14,6 +14,7 @@ Home Assistant integration for **Danfoss ECL 120 and ECL 220** heating controlle
 - Register groups that can be turned on or off together
 - **Return limit curve**: makes the fixed return limit follow the outdoor temperature
 - **Charts** of the supply (heat) curve and the return limit curve
+- **Performance sensors**: limiter reduction, flow/return difference and daily return compliance
 
 ## Install
 
@@ -96,6 +97,20 @@ The **Return limit curve** switch on the device page turns it on or off later.
 > **Fail-safe:** the ECL keeps the last value written. If Home Assistant stops, the controller carries on with that limit. Set a fixed limit before you turn the curve off for good.
 
 The sensor **Return limit (calculated)** shows the target. Its attributes show the outdoor average, active segment, status and last write.
+
+## Performance sensors
+Four sensors that show whether the return limit pays off.
+
+| Sensor | Value | Registers |
+|--------|-------|-----------|
+| **Limiter supply reduction** | How far the limiters pull the supply reference below the curve, in `K` | `21206` − `21200` |
+| **Flow return difference** | Flow minus return temperature (the cooling), in `K` | `21100` − `21104` |
+| **Return above limit today** | Share of today's time with the return above its limit, in `%` | `21104` vs `21210` |
+| **Return excess today** | How far and how long the return was above its limit, in `K·h` | `21104` vs `21210` |
+
+- The two daily sensors restart at local midnight and keep their totals across restarts. Yesterday's values are in their attributes.
+- A gap of more than `10` minutes between polls is not counted.
+- `21206` and `21210` are polled for these sensors even if their own entities are disabled. If you disable *Heat flow temperature*, *Return temperature* or *Heat flow temperature reference*, the sensors that need them show unknown.
 
 ## Charts
 Two image entities on the device page. Add them to a dashboard with a **Picture entity** card.

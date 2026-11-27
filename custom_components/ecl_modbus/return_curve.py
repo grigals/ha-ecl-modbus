@@ -293,13 +293,7 @@ class ReturnCurveController:
     @callback
     def async_start(self) -> CALLBACK_TYPE:
         """Evaluate after every poll. Returns the function that stops it."""
-        remove = self.coordinator.async_add_listener(self._handle_coordinator_update)
-        if self.enabled:
-            # The first poll ran before the restored state was known.
-            self.entry.async_create_task(
-                self.hass, self.coordinator.async_request_refresh(), "ecl_return_curve_refresh"
-            )
-        return remove
+        return self.coordinator.async_add_listener(self._handle_coordinator_update)
 
     @callback
     def _handle_coordinator_update(self) -> None:

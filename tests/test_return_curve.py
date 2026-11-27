@@ -237,8 +237,8 @@ async def test_off_by_default(hass: HomeAssistant, fake_client) -> None:
 
     assert hass.states.get(_switch_id(hass, entry)).state == "off"
     assert _curve_writes(fake_client) == []
-    # 21210's own entity is disabled by default, so it isn't polled while off.
-    assert RETURN_LIMIT not in fake_client.instances[-1].reads
+    # While off, the curve doesn't have 21210 polled (the compliance sensors may).
+    assert entry.runtime_data.coordinator.extra_registers_of("return_curve") == []
     # The calculated value is shown anyway.
     state = _sensor(hass, entry)
     assert float(state.state) == 47.0

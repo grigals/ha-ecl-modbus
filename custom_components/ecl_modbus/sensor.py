@@ -13,6 +13,11 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import EclConfigEntry
 from .entity import EclModbusEntity, EclReturnCurveEntity
 from .registers import ALL_REGISTERS, RegisterDef, RegisterType
+from .sensor_analytics import (
+    EclReturnComplianceSensor,
+    flow_return_difference_sensor,
+    limiter_reduction_sensor,
+)
 
 
 def _decimals_from_step(step: float | None) -> int | None:
@@ -133,3 +138,15 @@ async def async_setup_entry(
         if reg.platform == "sensor"
     )
     async_add_entities([EclReturnCurveSensor(data.return_curve, entry.entry_id, data.title)])
+    async_add_entities(
+        [
+            limiter_reduction_sensor(data.coordinator, entry.entry_id, data.title),
+            flow_return_difference_sensor(data.coordinator, entry.entry_id, data.title),
+            EclReturnComplianceSensor(
+                data.return_compliance, entry.entry_id, data.title, excess=False
+            ),
+            EclReturnComplianceSensor(
+                data.return_compliance, entry.entry_id, data.title, excess=True
+            ),
+        ]
+    )

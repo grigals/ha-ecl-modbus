@@ -117,9 +117,9 @@ class EclSupplyCurveImage(CoordinatorEntity[EclModbusCoordinator], _SvgImage):
         await super().async_added_to_hass()
         self.coordinator.set_extra_registers(_OWNER, SUPPLY_CHART_REGISTERS)
         self.async_on_remove(lambda: self.coordinator.set_extra_registers(_OWNER, []))
-        if not self._update_svg():
-            # Registers whose entities are disabled weren't in the last poll.
-            await self.coordinator.async_request_refresh()
+        # Registers whose entities are disabled are read by the refresh that
+        # follows setup.
+        self._update_svg()
 
     @property
     def available(self) -> bool:
