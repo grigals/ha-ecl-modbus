@@ -43,7 +43,7 @@
       },
       "return_curve": {
         "title": "Return limit curve",
-        "description": "Makes the return temperature limit (register 21210) follow the outdoor temperature. Turn it on with the \"Return limit curve\" switch. It writes only changes of 1 K or more, at most every 30 minutes. If Home Assistant stops, the controller keeps the last value written.",
+        "description": "Makes the return temperature limit (register 21210) follow the outdoor temperature. The next step shows the curve as a table and lets you turn it on. It writes only changes of 1 K or more, at most every 30 minutes. If Home Assistant stops, the controller keeps the last value written.",
         "data": {
           "return_curve_points": "Curve points (outdoor °C:return limit °C)",
           "return_curve_outdoor_entity": "Outdoor temperature sensor",
@@ -55,6 +55,14 @@
           "return_curve_points": "2 to 12 points, e.g. -20:60, -10:54, 0:42, 4:37. Between points the limit is interpolated, beyond the first and last point it stays flat.",
           "return_curve_outdoor_entity": "Leave empty to use the controller's own outdoor sensor (register 21102).",
           "return_curve_average_hours": "0 uses the current outdoor temperature without averaging."
+        }
+      },
+      "return_curve_preview": {
+        "title": "Check the return limit curve",
+        "description": "{table}\n\nOutdoor temperature: {outdoor}, {averaging}.",
+        "data": {
+          "enable_return_curve": "Turn the return limit curve on",
+          "edit_return_curve": "Go back and change the curve"
         }
       }
     },

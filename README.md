@@ -31,6 +31,8 @@ Each register definition includes:
 - Automatic reconnect if connection is lost  
 - Friendly naming and unified device info in Home Assistant  
 
+![The ECL device page in Home Assistant: controls for boost and operation mode, sensors for alarms and weather curve points, and activity including the return limit curve switch](docs/images/device_page.png)
+
 ---
 
 ## 🚀 Installation
@@ -114,7 +116,7 @@ It is **off by default**. To set it up:
 
 1. Open **Configure**, tick **Configure the return limit curve next** and submit.
 2. Enter the curve and the other settings (below).
-3. Turn on the **Return limit curve** switch on the device page.
+3. Check the curve in the table that follows, leave **Turn the return limit curve on** ticked and submit. You can also turn it on or off later with the **Return limit curve** switch on the device page.
 
 | Setting | Default | Meaning |
 |---------|---------|---------|
@@ -129,6 +131,10 @@ How it writes:
 - If the outdoor temperature is unavailable, nothing is written.
 - If the limit is changed somewhere else (in ECL Go, on the controller, or with the *Heat return temperature reference* entity), the curve **pauses** and raises a repair issue instead of overwriting your change. To resume, turn the switch off and on again.
 - While the curve is on, 21210 and 21102 are polled even if their entities are disabled.
+
+The image entity **Return limit curve chart** draws the curve, the min/max limits (dashed red), the target at the current averaged outdoor temperature (orange dot) and the value the ECL actually holds (green ring). Add it to a dashboard with a *Picture entity* card, or open it from the device page.
+
+![Return limit curve chart: an 11-point curve from 61 °C at −16 °C outdoor down to 38 °C at 4 °C, with the target and the value the ECL holds marked at −0.9 °C outdoor](docs/images/return_limit_curve_chart.png)
 
 The diagnostic sensor **Return limit (calculated)** shows the limit the curve works out. Its attributes show the averaged and current outdoor temperature, the active curve segment, the status (`active`, `paused`, `outdoor_unavailable`, …), and the time and result of the last write.
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 DOMAIN = "ecl_modbus"
 
 # Platforms we expose
-PLATFORMS: list[str] = ["sensor", "binary_sensor", "number", "select", "switch"]
+PLATFORMS: list[str] = ["sensor", "binary_sensor", "number", "select", "switch", "image"]
 
 # Config entry (setup)
 CONF_BAUDRATE = "baudrate"
