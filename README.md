@@ -40,7 +40,7 @@ Copy `custom_components/ecl_modbus` from the latest release into `/config/custom
 | Stop bits | `1` | `1` |
 | Slave / unit ID | `5` | `5` |
 
-Tested with a USB to RS485 converter, a WaveShare RS485 to Ethernet/WiFi server and a Hi-Flying Protoss-PE11.
+Tested with Hi-Flying Protoss-PE11. Dual device setup.
 
 ## Registers
 Every register is an entity. Only a core set starts enabled, and disabled registers are not polled.
@@ -51,17 +51,17 @@ Every register is an entity. Only a core set starts enabled, and disabled regist
 
 | Group | Contents |
 |-------|----------|
-| Temperatures | S1–S6, outside, flow, return, room, supply, DHW |
-| Status and alarms | Valve, pump, operation mode and status, heat demand, bypass, alarms |
-| Boost | On/off, remaining time, period, added temperature |
-| Setpoints | Flow limits and references, room, summer cut-out, frost protection, bypass |
-| Weather curve | Curve slope and curve points |
-| PID tuning | Xp, Tn, deadband |
-| Return and room limiters | Limiter influence and adaption time |
-| Pump and valve exercise | After-run and exercise timing |
-| Feature switches | Limiters, summer cut-out, frost protection, exercise, bypass, external override |
-| Sensor health | S1–S6 OK, invalid, open or short circuit |
-| Device information | Serial, firmware, IP and MAC, runtime, Modbus counters |
+| **Temperatures** | S1–S6, outside, flow, return, room, supply, DHW |
+| **Status and alarms** | Valve, pump, operation mode and status, heat demand, bypass, alarms |
+| **Boost** | On/off, remaining time, period, added temperature |
+| **Setpoints** | Flow limits and references, room, summer cut-out, frost protection, bypass |
+| **Weather curve** | Curve slope and curve points |
+| **PID tuning** | Xp, Tn, deadband |
+| **Return and room limiters** | Limiter influence and adaption time |
+| **Pump and valve exercise** | After-run and exercise timing |
+| **Feature switches** | Limiters, summer cut-out, frost protection, exercise, bypass, external override |
+| **Sensor health** | S1–S6 OK, invalid, open or short circuit |
+| **Device information** | Serial, firmware, IP and MAC, runtime, Modbus counters |
 
 All registers are defined in [`registers.py`](custom_components/ecl_modbus/registers.py). Addresses follow the ECL 120 `A130` map; other applications use some of them differently.
 
@@ -74,6 +74,8 @@ The ECL 120 has one fixed return limit, register `21210`. This feature makes it 
 3. Check the preview table and leave **Turn the return limit curve on** ticked.
 
 The **Return limit curve** switch on the device page turns it on or off later.
+
+<img src="docs/images/return_limit_curve_options.png" alt="Return limit curve settings" width="420">
 
 | Setting | Default | Notes |
 |---------|---------|-------|
