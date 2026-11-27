@@ -2,7 +2,7 @@
 
 Home Assistant integration for **Danfoss ECL 120 and ECL 220** heating controllers over **Modbus RTU or Modbus TCP**. Tested on ECL 120 (application A130). ECL 220 uses the same register map but is untested.
 
-Forked from [nichlasrohde/ha-ecl-modbus](https://github.com/nichlasrohde/ha-ecl-modbus). Not affiliated with or endorsed by Danfoss.
+Not affiliated with or endorsed by Danfoss.
 
 ![ECL device page in Home Assistant](docs/images/device_page.png)
 
@@ -104,3 +104,6 @@ pytest
 
 ## License and disclaimer
 MIT. Provided as-is, without warranty. Writing to the controller changes how the heating runs. Check registers and values before writing, and use at your own risk.
+
+## Credits
+Forked from [nichlasrohde/ha-ecl-modbus](https://github.com/nichlasrohde/ha-ecl-modbus), the original integration.
