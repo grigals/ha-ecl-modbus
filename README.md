@@ -1,282 +1,109 @@
 # ECL 120/220 Modbus for Home Assistant
 
-A custom Home Assistant integration for reading data from **Danfoss ECL 120 and ECL 220 heating controllers** using **Modbus RTU or Modbus TCP**.
+Home Assistant integration for **Danfoss ECL 120 and ECL 220** heating controllers over **Modbus RTU or Modbus TCP**. Tested on ECL 120 (application A130). ECL 220 uses the same register map but is untested.
 
-> This is an independent community project. It is **not affiliated with, or endorsed by, Danfoss**. Danfoss is named only to identify the supported controllers.
+Not affiliated with or endorsed by Danfoss.
 
-This integration is created by an enthusiast (not a professional developer) and is actively evolving.
-It is tested on **ECL 120**, but **ECL 220 uses the same register map**, so it *should* work identically — feedback is welcome!
+![ECL device page in Home Assistant](docs/images/device_page.png)
 
----
+## Features
+- Reads and writes the ECL registers as normal entities: sensors, numbers, selects and switches
+- Serial (USB to RS485) or TCP through a Modbus gateway; reconnects on its own
+- Register groups that can be turned on or off together
+- **Return limit curve**: makes the fixed return limit follow the outdoor temperature
+- **Charts** of the supply (heat) curve and the return limit curve
 
-## 🔧 Features
-Current supported features:
+## Install
+**HACS** ([hacs.xyz](https://hacs.xyz)) is a community add-on, not part of Home Assistant. With HACS installed:
 
-The list of supported registers is continuously expanding.
+1. HACS → **⋮** → **Custom repositories** → add `https://github.com/grigals/ha-ecl-modbus` as type **Integration**.
+2. Download **ECL Modbus** and restart Home Assistant.
+3. **Settings → Devices & services → Add integration → ECL Modbus**.
 
-The authoritative source for supported registers is:
-- `custom_components/ecl_modbus/registers.py`
+[![Open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=grigals&repository=ha-ecl-modbus&category=integration)
 
-Each register definition includes:
-- Modbus address
-- Read / Write support
-- Data type
-- Unit
-- Scaling
-- Min / Max / Step (where applicable)
+**Manually:** copy `custom_components/ecl_modbus` from the latest release into `/config/custom_components/`, restart, then add the integration as in step 3.
 
-### Fully configurable
-- Enable/disable each sensor individually  
-- Supports **USB (Modbus RTU)** and **IP (Modbus TCP)**  
-- Automatic reconnect if connection is lost  
-- Friendly naming and unified device info in Home Assistant  
+## Connection
+| | Serial (Modbus RTU) | TCP (Modbus gateway) |
+|---|---|---|
+| Port | e.g. `/dev/serial/by-id/...` | 502 |
+| Settings | 38400 baud, even parity, 1 stop bit | Gateway's RS485 side set the same |
+| Slave / unit ID | 5 | 5 |
 
-![The ECL device page in Home Assistant: controls for boost and operation mode, sensors for alarms and weather curve points, and activity including the return limit curve switch](docs/images/device_page.png)
+Tested with a USB to RS485 converter, a WaveShare RS485 to Ethernet/WiFi server and a Hi-Flying Protoss-PE11.
 
----
-
-## 🚀 Installation
-
-### Install via HACS
-
-The easiest way to install this integration is through HACS.
-
-Click the button below:
-
-[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=nichlasrohde&repository=ha-ecl-modbus&category=integration)
-
----
-
-### Manual installation
-1. Download the latest release ZIP  
-2. Extract it into: /config/custom_components/ecl_modbus/
-3. Restart Home Assistant  
-4. Add integration via:  
-**Settings → Devices & Services → Add Integration → ECL Modbus**
-
----
-
-## ⚙️ Configuration
-
-During setup you choose **how the controller is connected**:
-
-### 🔌 Connection type
-
-#### Serial (USB / Modbus RTU)
-- Direct USB-to-RS485 adapter
-- Typical port: `/dev/ttyUSB0` or `/dev/serial/by-id/...`
-- Baudrate: **38400**
-- Parity: **Even**
-- Stop bits: **1**
-- Slave ID: **5** (default)
-
-#### 🌐 TCP (Modbus TCP via gateway)
-- Uses a Modbus TCP ⇄ Modbus RTU gateway
-- Typical port: **502**
-- Unit ID = ECL Modbus slave address (default: **5**)
-
----
-
-### Choosing registers
-Every register is a normal Home Assistant entity, and only a useful core set starts enabled. Registers you don't enable are not polled.
-
-- **Single registers:** open the device page, or **Settings → Devices & Services → Entities**, and enable or disable entities there. The Entities page can change many at once.
-- **Whole groups:** open the integration's **Configure** dialog and tick or untick a group. A group is only ticked when all of its registers are enabled, and groups you don't change are left as they are.
+## Registers
+Every register is an entity. Only a core set starts enabled, and disabled registers are not polled. Enable single entities on the device page, or whole groups under **Configure**. Changes apply after about 30 seconds. The polling interval is also under **Configure**.
 
 | Group | Contents |
 |-------|----------|
 | Temperatures | S1–S6, outside, flow, return, room, supply, DHW |
 | Status and alarms | Valve, pump, operation mode and status, heat demand, bypass, alarms |
-| Boost | Boost on/off, remaining time, period, added temperature |
+| Boost | On/off, remaining time, period, added temperature |
 | Setpoints | Flow limits and references, room, summer cut-out, frost protection, bypass |
 | Weather curve | Curve slope and curve points |
 | PID tuning | Xp, Tn, deadband |
 | Return and room limiters | Limiter influence and adaption time |
 | Pump and valve exercise | After-run and exercise timing |
 | Feature switches | Limiters, summer cut-out, frost protection, exercise, bypass, external override |
-| Sensor health | S1–S6 OK, invalid, open circuit or short circuit |
-| Device information | Serial, firmware, IP and MAC address, runtime, Modbus message counters |
+| Sensor health | S1–S6 OK, invalid, open or short circuit |
+| Device information | Serial, firmware, IP and MAC, runtime, Modbus counters |
 
-Entities appear about 30 seconds after you enable them, when Home Assistant reloads the integration.
+All registers are defined in [`registers.py`](custom_components/ecl_modbus/registers.py). Addresses follow the ECL 120 A130 map; other applications use some of them differently.
 
-The new registers follow the **ECL 120 application A130** map. Other applications use some of these addresses differently.
+## Return limit curve
+The ECL 120 has one fixed return limit (register 21210). This makes it follow the outdoor temperature, like the ECL 210/310. It is off by default.
 
-### Upgrading from 2.3.0 or older
-Your existing entities keep their entity IDs, names and history, and your register selection is carried over automatically. A few new registers start enabled: heat flow temperature, return temperature and the two alarms. Take a Home Assistant backup before upgrading, as with any update.
+**Set up:** **Configure** → tick **Configure the return limit curve next** → enter the settings → check the preview table → leave **Turn the return limit curve on** ticked. The **Return limit curve** switch turns it on or off later.
 
-### Polling interval
-The polling interval is set in the same **Configure** dialog.
+| Setting | Default | |
+|---------|---------|---|
+| Curve points | `-15:55, 10:40` | 2 to 12 `outdoor:limit` pairs in °C. Linear between points, flat beyond the ends. |
+| Outdoor sensor | ECL (21102) | Or any Home Assistant temperature sensor |
+| Averaging | 24 h | Mean outdoor temperature over this period; 0 = current value |
+| Lowest / highest limit | 25 / 65 °C | The written value is cut to this range |
 
-No YAML required.
+**Writing:**
+- Writes only changes of 1 K or more, at most every 30 minutes.
+- Reads each write back on the next poll and raises a repair issue if it didn't stick.
+- Writes nothing while the outdoor temperature is unavailable.
+- If 21210 is changed elsewhere (ECL Go, the controller, the entity), the curve pauses with a repair issue. Turn the switch off and on to resume.
+- While on, 21210 and 21102 are polled even if their entities are disabled.
 
-### Supply curve chart
-The image entity **Supply curve chart** draws the controller's heat curve: the supply temperature at its six points (−30, −15, −5, 0, 5 and 15 °C outdoor), continued beyond them and cut to the minimum and maximum supply temperature, as in the Danfoss tools. At the current outdoor temperature it marks:
-- what the curve asks for (orange dot, *Heat weather compensated reference*)
-- the reference after limiters such as the return limiter (red ring, *Heat flow temperature reference*)
-- the actual flow temperature (green ring)
+**Fail-safe:** the ECL keeps the last value written. If Home Assistant stops, it carries on with that limit. Set a fixed limit before you turn the curve off for good.
 
-The chart reads the curve from the controller; change the curve in ECL Go or on the controller. Its registers are polled even if their own entities are disabled. The outdoor and flow markers use the *Outside temperature*, *Heat flow temperature reference* and *Heat flow temperature* entities, which are on by default; turn those off and the markers are left out. Disable the chart to stop polling its registers.
+The sensor **Return limit (calculated)** shows the target, with attributes for the outdoor average, active segment, status and last write.
 
-### Return limit curve (optional)
-The ECL 120 has one fixed return temperature limit (register 21210, *Heat return temperature reference*). The ECL 210/310 can make that limit follow the outdoor temperature. This integration can do the same for the ECL 120: it works out the limit from a curve and writes it to 21210.
+## Charts
+Two image entities on the device page. Add them to a dashboard with a *Picture entity* card.
 
-It is **off by default**. To set it up:
+**Return limit curve chart:** the curve, the min/max limits (dashed red), the target at the averaged outdoor temperature (orange) and the value the ECL holds (green).
 
-1. Open **Configure**, tick **Configure the return limit curve next** and submit.
-2. Enter the curve and the other settings (below).
-3. Check the curve in the table that follows, leave **Turn the return limit curve on** ticked and submit. You can also turn it on or off later with the **Return limit curve** switch on the device page.
+![Return limit curve chart](docs/images/return_limit_curve_chart.png)
 
-| Setting | Default | Meaning |
-|---------|---------|---------|
-| Curve points | `-15:55, 10:40` | 2 to 12 `outdoor °C:return limit °C` pairs, e.g. `-20:60, -14:59, -10:54, -4:47, 0:42, 4:37`. Between points the limit is interpolated linearly. Beyond the first and last point it stays flat. |
-| Outdoor temperature sensor | *(empty)* | Empty uses the ECL's own outdoor sensor (register 21102). You can also choose any Home Assistant temperature sensor. |
-| Outdoor averaging period | 24 h | The curve uses the mean outdoor temperature over this period. 0 uses the current value. |
-| Lowest / highest return limit | 25 / 65 °C | The written value is clamped to this range. |
+**Supply curve chart:** the ECL heat curve from its six points (−30 to 15 °C), continued beyond them and cut to supply min/max. At the current outdoor temperature it marks:
+- what the curve asks for (orange)
+- the reference after limiters (red)
+- the actual flow temperature (green)
 
-How it writes:
-- After each poll it calculates a new limit. It writes the limit only when it differs from the controller's value by **1 K or more**, and **at most every 30 minutes**.
-- The next poll reads the value back. If the controller doesn't hold the written value, the integration logs a warning and raises a repair issue under **Settings → System → Repairs**.
-- If the outdoor temperature is unavailable, nothing is written.
-- If the limit is changed somewhere else (in ECL Go, on the controller, or with the *Heat return temperature reference* entity), the curve **pauses** and raises a repair issue instead of overwriting your change. To resume, turn the switch off and on again.
-- While the curve is on, 21210 and 21102 are polled even if their entities are disabled.
+![Supply curve chart](docs/images/supply_curve_chart.png)
 
-The image entity **Return limit curve chart** draws the curve, the min/max limits (dashed red), the target at the current averaged outdoor temperature (orange dot) and the value the ECL actually holds (green ring). Add it to a dashboard with a *Picture entity* card, or open it from the device page.
+Its registers are polled while the chart is enabled. Change the curve itself in ECL Go or on the controller.
 
-![Return limit curve chart: an 11-point curve from 61 °C at −16 °C outdoor down to 38 °C at 4 °C, with the target and the value the ECL holds marked at −0.9 °C outdoor](docs/images/return_limit_curve_chart.png)
-
-The diagnostic sensor **Return limit (calculated)** shows the limit the curve works out. Its attributes show the averaged and current outdoor temperature, the active curve segment, the status (`active`, `paused`, `outdoor_unavailable`, …), and the time and result of the last write.
-
-> **Fail-safe:** the ECL stores the last value written in 21210 and keeps limiting at that value. If Home Assistant stops, the connection is lost or the curve is turned off, the controller goes on with the last limit. It does not fall back to a default. Before you uninstall the integration or turn the curve off for good, set the fixed limit you want.
-
-The outdoor average and the curve's state are kept across restarts.
-
----
-
-## 🧩 How it works
-- Uses `pymodbus` for Modbus communication
-- Supports both **Modbus RTU** and **Modbus TCP**
-- One shared coordinator polls enabled registers
-- Automatic reconnect on communication errors; entities show as unavailable until the connection is back
-- Groups all sensors under a single device in Home Assistant
-
----
-
-## 🧪 Compatibility
-| Controller | Status |
-|------------|--------|
-| **ECL 120** | ✔ Tested |
-| **ECL 220** | ⚠ Untested, but register-compatible |
-
----
-
-## 🧰 Tested hardware
-
-This integration has been built and tested with the following hardware setups:
-
-### USB → RS485 (Modbus RTU)
-- **Industrial USB to RS485 Bidirectional Converter**  
-  Vendor: raspberrypi.dk  
-  Link: https://raspberrypi.dk/en/product/industrial-usb-to-rs485-bidirectional-converter/
-
-Used for direct Modbus RTU communication via USB (e.g. `/dev/ttyUSB0` or `/dev/serial/by-id/...`).
-
----
-
-### Ethernet / WiFi → RS485 (Modbus TCP via gateway)
-- **WaveShare Industrial Grade Serial Server RS232/485 to WiFi/Ethernet**  
-  Vendor: raspberrypi.dk  
-  Link: https://raspberrypi.dk/en/product/waveshare-industrial-grade-serial-server-rs232-485-to-wifi-ethernet/
-
-Used as a **Modbus TCP ⇄ Modbus RTU gateway**.  
-Configured in *Modbus TCP ↔ Modbus RTU* mode and connected to the ECL controller via RS485.
-
-- **Hi-Flying Protoss-PE11 RS485 to Ethernet Serial Server**  
-  Vendor: Hi-Flying  
-  Link: http://www.hi-flying.com/pe11
-
-Tested and confirmed working as a **Modbus TCP ⇄ Modbus RTU gateway** connected to the ECL controller via RS485.
-
-> When using a gateway, ensure that the RS485 parameters (baudrate, parity, stop bits) match the ECL controller configuration.
-
----
-
-## 🛠️ Planned Features
-This integration is actively evolving. Planned and possible future improvements include:
-- Additional ECL registers and writable parameters
-- Improved multi-controller support
-- More advanced connection diagnostics
-
-Suggestions, missing registers, and pull requests are very welcome!
-
-### Running the tests
-The tests run on real Home Assistant with a fake Modbus client. They need Linux or WSL, and the Python version required by `pytest-homeassistant-custom-component`.
+## Tests
+Run on real Home Assistant with a fake Modbus client. Needs Linux, WSL or Docker:
 
 ```bash
 pip install -r requirements_test.txt
-```
-
-```bash
 pytest
 ```
 
----
+## Documentation
+[ECL120 & ECL220 Modbus Specification, rev 023](./docs/IS2007%2C%20ECL120%20and%20ECL220%20Modbus%20Specification%2C%20rev%20023.pdf), shared with permission from Danfoss.
 
-## ❤️ Contributions
-This project is community-driven — PRs, testing, and feedback are highly appreciated.
+## License
+[MIT](LICENSE). Use at your own risk; see the [disclaimer](DISCLAIMER.md).
 
-GitHub:  
-👉 https://github.com/nichlasrohde/ha-ecl-modbus
-
----
-
-## ☕ Support the project
-
-This project is developed and maintained in my spare time as a hobby.
-
-If you find it useful and would like to support continued development,  
-you’re very welcome to do so — completely optional.
-
-🇩🇰 **MobilePay (Denmark):** `9316PV`
-[Support via MobilePay](https://qr.mobilepay.dk/box/82f3141c-2907-485e-b47f-518f9d789297/pay-in)
-
-Thank you for the support ❤️
-
----
-
-## 📘 Official Danfoss Modbus Documentation
-
-This integration is based on the official Modbus register list from Danfoss.
-
-📄 **Download PDF:**  
-👉 [ECL120 & ECL220 Modbus Specification (Rev 023)](./docs/IS2007%2C%20ECL120%20and%20ECL220%20Modbus%20Specification%2C%20rev%20023.pdf)
-
-The document is shared with permission from Danfoss.
-
----
-
-## 📄 License
-MIT License
-
-## ⚠️ Disclaimer
-
-This integration is provided **as-is**, without any guarantees or warranties of any kind.
-
-- The author is **not affiliated with Danfoss**.
-- The author is **not a professional developer**.
-- This integration may contain bugs, incorrect register mappings, or incomplete implementations.
-- Writing values to the controller **may affect system behavior** and could potentially cause malfunction or damage if used incorrectly.
-
-**You are fully responsible for:**
-- Verifying register addresses and values
-- Testing changes in a safe environment
-- Ensuring that critical heating functions remain safe and operational
-
-The author takes **no responsibility or liability** for:
-- Damaged equipment
-- Incorrect heating behavior
-- Increased energy consumption
-- Loss of comfort or system downtime
-
-If you are unsure about a parameter or register — **do not write to it**.
-
-Use this integration **at your own risk**.
+## Credits
+Forked from [nichlasrohde/ha-ecl-modbus](https://github.com/nichlasrohde/ha-ecl-modbus), the original integration.
